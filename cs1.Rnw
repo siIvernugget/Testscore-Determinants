@@ -1,0 +1,242 @@
+\documentclass{article}
+\usepackage{graphicx} 
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{enumerate}
+\PassOptionsToPackage{hyphens}{url}\usepackage{hyperref}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{apalike}
+\onehalfspacing
+
+\title{Econometrics 1: Case Study 1\\
+\large Determinants of Testscores in Public Schools}
+\author{Bischoy Bert}
+\date{November 2025}
+
+<<setup, include=FALSE>>=
+library(knitr)
+library(formatR)
+opts_chunk$set(
+  tidy = FALSE,
+  tidy.opts = list(width.cutoff = 50),
+  size = "small"
+)
+@
+
+<<include=FALSE>>=
+library(readxl)
+library(readr)
+library(tidyverse)
+@
+
+
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+A classic topic in Economics concerns estimating the “returns to education”, that is, the causal
+effect of education on labor market earnings.
+A related question is what properties of a school are predictive for their students’ achievements, measured in terms of standardized test score outcomes. Understanding the determinants of being
+a “good school” would help to improve individual decision making, and would be informative for
+economic policy. We shall investigate this question in the present case study.
+\\
+As for this analysis, we shall only be interested in public schools. We use the dataset \texttt{CASchools\_EE141\_InSample.xlsx} from the Stock and Watson textbook resources, available at \url{https://www.princeton.edu/~mwatson/Stock-Watson_4E/Stock-Watson-Resources
+-4e.html}. The dataset has been edited to include only public schools. For our purposes, we shall call it \texttt{CASchool}.
+
+<<>>=
+CASchool <- read_xlsx("CASchools_EE141_InSample.xlsx") |> 
+  filter(charter_s == 0)
+@
+
+
+\section{Data Acquisition}
+According to the description of the dataset, the variables are defined as follows:
+\begin{itemize}
+    \item \texttt{testscore}: The test scores for each school as a sum of math and English/language arts scores for 5th grade students
+    \item \texttt{str\_s}: The student-to-teacher ratio (full-time equivalent, FTE)
+    \item \texttt{med\_income\_z}: The median income for the 15+ population per zip code
+\end{itemize}
+
+We expect both \texttt{str\_s} and \texttt{med\_income\_z} to be negatively and positively correlated with \texttt{testscore}, respectively. A lower student-to-teacher ratio implies fewer students per teacher, which should facilitate a more personalized learning experience, thereby improving learning outcomes. Furthermore, higher median income should correlate positively with test scores, as higher-income families typically have greater resources to support academic achievement and, assuming a correlation between education and income, may place stronger emphasis on academic success.
+\\
+Following, we will compute the empirical correlation between both \texttt{med\_income\_z}, \texttt{str\_s} and \texttt{testscore}, respectively. To do this, we shall use the \texttt{R} base function \texttt{cor()}.
+
+<<>>=
+CASchool |> 
+  summarise(correlation_test_income = cor(testscore, med_income_z))
+@
+
+The computation indicates a strong positive correlation between testscores and median personal income and a slightly negative correlation between testscores and student-to-teacher ratios. These results supports our previously stated arguments albeit we expected a stronger (negative) correlation between the latter.
+
+\section{Descriptive Statistics}
+In this section, we shall create a histogram to display the distribution of testscores in schools.
+
+<<plot_testscore_histogram, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Histogram for Testscores">>=
+histogram <- CASchool |>
+  ggplot(aes(x = testscore)) +
+  geom_histogram(binwidth = 50, fill = "lightblue", color = "white") +
+  labs(
+    title = "Distribution of Test Scores",
+    x = "Average Testscore",
+    y = "Frequency"
+  )
+histogram
+@
+Next, we want to determine which school has the highest testscores and which school the lowest.
+<<>>=
+CASchool |>   
+  filter(testscore == max(CASchool$testscore) |
+           testscore == min(CASchool$testscore)) |> 
+  select(zipcode, schoolname, testscore) |> 
+  arrange(testscore)
+@
+
+Next, we want to determine the values for the variables \texttt{te\_salary\_avg\_d}, \texttt{st\_ratio}, and \texttt{med\_income\_z} for those two schools and interpret the results.
+
+<<>>=
+result1 <- CASchool |> 
+  filter(schoolname %in% c("Tom Matsumoto Elementary", "Westmorland Elementary")) |> 
+  select(schoolname, te_salary_avg_d, str_s, med_income_z, testscore) |> 
+  arrange(testscore)
+result1
+@
+
+As we can see, Tom Matsumoto Elementary has significantly higher average teacher salaries, a significantly higher median income within its district but also a higher student-to-teacher ratio than  Westmorland Elementary. This aligns with our assumption that median income (and hence teacher salaries) positively correlate with testscores. However, the higher student to teacher ratio appears counterintuitive. It may be the case that a possible income effect heavily outweighs any higher student to teacher ratio, although we might want to emphasize that the negative correlation was very small to begin with.
+
+\section{Plots}
+For this section, we shall create a new variable and add it to our dataset. We will call the new variable \texttt{group\_strs} and define it as follows:
+\begin{itemize}
+    \item equals \(-1\) if an observation’s \texttt{str\_s} value is strictly smaller than the 20\% quantile of the variable \texttt{str\_s},
+    \item equals \(1\) if an observation’s \texttt{str\_s} value is strictly larger than the 80\% quantile of the variable \texttt{str\_s},
+    \item and equals \(0\) otherwise.
+\end{itemize}
+
+<<>>=
+CASchool <- CASchool |> 
+  mutate(
+    group_strs = case_when(
+      str_s < quantile(str_s, 0.2, na.rm = TRUE) ~ -1,
+      str_s > quantile(str_s, 0.8, na.rm = TRUE) ~ 1,
+      TRUE ~ 0
+    )
+  )
+@
+
+Next, we shall create three boxplots displaying the distributions of testscores within each defined quantile of student to teacher ratio.
+
+\section{Scatterplot}
+For this section we shall take the natural logarithm of \texttt{med\_income\_z} and create a new variable \texttt{lmed\_income} which we will add to our \texttt{CASchool} dataset.
+
+<<>>=
+CASchool <- CASchool |> 
+  mutate(
+    lmed_income = log(med_income_z)
+  )
+@
+
+Now, we will generate a scatterplot illustrating the relationship between \texttt{testscore} and our newly created variable \texttt{lmed\_income}
+<<plot_testscore_lmed_income, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Scatterplot of testscore against lmed_income">>=
+scatterplot <- CASchool |> 
+  ggplot() +
+  geom_point(aes(x = lmed_income, y = testscore))
+@
+
+The plot indicates a strong, linear relationship between \texttt{lmed\_income} and \texttt{testscore}.
+\\
+Next, we will try and fit a linear model through our scatterplot by guessing a reasonable regression line. To do this, the intercept was chosen to be \texttt{-1300} and the slope \texttt{200}.
+
+<<plot_scatterplot_abline_guess, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Scatterplot with our guessed regression line">>=
+scatterplot_abline_guess <- scatterplot +
+  geom_abline(intercept = -1300, slope = 200, color = "red")
+scatterplot_abline_guess
+@
+
+\section{OLS Estimation and Illustration}
+In this section we shall fit a linear regression  of the form
+
+$$Y = \beta_0 + \beta_1 \log(X) + u, \quad E[u \mid X] = 0$$
+
+with \texttt{testscore} as $Y$ and \texttt{lmed\_income} as $X$.
+
+<<>>=
+model <- lm(data = CASchool, testscore ~ lmed_income)
+@
+
+The estimated intercept is $\Sexpr{model$coefficients["(Intercept)"]}$, and the estimated coefficient for \texttt{lmed\_income} is $\Sexpr{model$coefficients["lmed_income"]}$. The graphic below shows the computed regression line above our previously created scatterplot.
+
+<<plot_scatterplot_abline, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Scatterplot with the calculated regression line">>=
+scatterplot_abline <- scatterplot +
+  geom_abline(intercept = model$coefficients["(Intercept)"],
+              slope = model$coefficients["lmed_income"], color = "blue")
+scatterplot_abline
+@
+
+Next, we shall predict \texttt{testscore} for a new observation with \texttt{med\_income\_z} =\texttt{=} \texttt{22026.47} by: (i) reading the graph, (ii) manually using the estimated model equation, and (iii) using the \texttt{R} function \texttt{predict}.
+
+\begin{enumerate}[(i)]
+    \item By reading the graph for \texttt{lmed\_income} = 10 ($\log(22026.47)$), we can roughly estimate our testscore variable to be $~750$.
+    
+    \item To manually calculate the exact predicted value, we plug in $\log(22026.47)$ into variable $X$ of our linear model.
+    
+    $$Y = -396.8 + 112.8 \times \log(22026.47) + u = 731.2 + u, \quad E[u \mid X] = 0$$
+    \item Using the \texttt{predict} function.
+<<>>=
+predict(model, newdata = data.frame(lmed_income = log(22026.47)))
+@
+\end{enumerate}
+
+Next, we want to see what the expected score is if \texttt{lmed\_income} decreases by 0.5.
+<<>>=
+predict(model, newdata = data.frame(lmed_income = log(22026.47) - 0.5))
+@
+
+\section{Residual Plot}
+In this section we shall plot the residuals from the above model against the values in the regressor \texttt{lmed\_income}. Using
+residuals as proxies of error terms, we will discuss whether the standard assumptions for the OLS appear to
+be satisfied or not.
+
+<<plot_residuals, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Residuals Plot">>=
+CASchool <- CASchool |> 
+  mutate(residuals = residuals(model))
+
+residuals_plot <- CASchool |> 
+  ggplot(aes(x = lmed_income, y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(
+    x = "Log Median Income",
+    y = "Residuals",
+    title = "Residuals for Test Scores vs Log Median Income"
+  )
+residuals_plot
+@
+Now we shall focus on the model specifications and the assumption of homoskedasticity. To do this, we shall call a diagnostic function \texttt{plot} in \texttt{R}.
+<<plot_diagnostic, message=FALSE, warning=FALSE, out.width="75%", fig.align="center", fig.cap="Residuals vs Fitted Plot">>=
+plot(model, which = 1)
+@
+
+The residual plot shows a slightly u-shaped pattern rather than random scatter around zero. This violates the zero conditional mean assumption E[u] = 0, indicating model misspecifications thus suggesting that the relationship between \texttt{testscore} and \texttt{lmed\_income} is not exactly linear. Homoskedasticity appears satisfied - the spread of residuals is roughly constant across fitted values. Given the u-shaped curve, it might be worthwhile to consider adding a quadratic term in \texttt{lmed\_income} to capture potential curvature in the relationship between income and test scores. This could be modeled as:
+$$Y = \beta_0 + \beta_1 \times \log(X) + \beta_2 \times \log(X)^2 + u, \quad E[u \mid X] = 0$$
+
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

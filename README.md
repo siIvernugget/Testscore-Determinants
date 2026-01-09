@@ -1,5 +1,5 @@
 # Econometrics Case Study: Determinants of Testscores
-This repository contains an econometric analysis, as part of a university project, of factors influencing average testscores in public schools across the US, based on data from Stock and Watson's *Introduction to Econometrics*, available at https://www.princeton.edu/~mwatson/Stock-Watson_4E/Stock-Watson-Resources-4e.html. The analysis is performed using R and compiled into a LaTeX report using knitr.
+This repository contains a reproducible econometric analysis, as part of a university project, of factors influencing average testscores in public schools across the US, based on data from Stock and Watson's *Introduction to Econometrics*, available at https://www.princeton.edu/~mwatson/Stock-Watson_4E/Stock-Watson-Resources-4e.html. The analysis is performed using R and compiled into a LaTeX report using knitr.
 
 ## Overview
 * **`testscore determinants.Rnw`**: The main source file. Contains LaTeX code for the report and R code for the analysis (Knits to PDF).

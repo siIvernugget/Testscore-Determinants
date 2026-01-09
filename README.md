@@ -5,7 +5,7 @@ This repository contains a reproducible econometric analysis, as part of a unive
 * **`testscore determinants.Rnw`**: The main source file. Contains LaTeX code for the report and R code for the analysis (Knits to PDF).
 * **`CASchools_EE141_InSample.xlsx`**: The raw dataset used for the analysis.
 * **`CASchools_EE141_Description`**: Description of the variables in the dataset.
-* **`Task Description.pdf`**: Task Description
+* **`Task Description.pdf`**: Task Description.
 * **`testscore determinants.pdf`**: The final compiled report.
 
 ## Prerequisites
